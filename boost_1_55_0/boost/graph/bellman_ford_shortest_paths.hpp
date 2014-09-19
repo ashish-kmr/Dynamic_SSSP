@@ -27,6 +27,7 @@
 #include <boost/graph/graph_concepts.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/relax.hpp>
+#include <boost/graph/linear_tree.hpp>
 #include <boost/graph/visitors.hpp>
 #include <boost/graph/named_function_params.hpp>
 #include <boost/concept/assert.hpp>
@@ -142,7 +143,7 @@ namespace boost {
                          BinaryFunction combine, 
                          BinaryPredicate compare,
                          BellmanFordVisitor v,
-			 typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+			 typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number, class linear_tree *SP_tree)
   { 
 	int aff_set[100000]={0};
 	for(int it=0; it< affected_number ; it++)
@@ -163,6 +164,7 @@ namespace boost {
     std::pair<in_edg,in_edg> e_it;
     std::pair< vtx, vtx > vtx_itr;
     vtx_itr=vertices(g);
+
     for (Size k = 0; k < N; ++k) { 
       bool at_least_one_edge_relaxed = false;
 	for(int trav_vert=0; trav_vert<affected_number; ++trav_vert)
@@ -186,6 +188,7 @@ namespace boost {
 					  v.edge_not_relaxed(*i, g);
 			}
     }
+
       if (!at_least_one_edge_relaxed)
 	        break;
   }
@@ -196,9 +199,9 @@ namespace boost {
       {
         v.edge_not_minimized(*i, g);
         return false;
-      } else*/
-        v.edge_minimized(*i, g);
-	//std::cout<<"Reached"<<std::endl;
+      } else
+        v.edge_minimized(*i, g);*/
+
     return true;
   }
 
@@ -283,7 +286,8 @@ namespace boost {
       (VertexAndEdgeListGraph& g, 
        typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor s,
        Size N, WeightMap weight, PredecessorMap pred, DistanceMap distance,
-       const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+       const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices, 
+	   int affected_number,class linear_tree *SP_tree)
     {
       typedef typename property_traits<DistanceMap>::value_type D;
       bellman_visitor<> null_vis;
@@ -302,7 +306,7 @@ namespace boost {
                              std::less<D>()),
                 choose_param(get_param(params, graph_visitor),
                              null_vis)
-                , *affected_vertices, affected_number);
+                , *affected_vertices, affected_number, SP_tree);
     }
 
     template<typename VertexAndEdgeListGraph, typename Size, 
@@ -313,7 +317,8 @@ namespace boost {
       (VertexAndEdgeListGraph& g, 
        param_not_found,
        Size N, WeightMap weight, PredecessorMap pred, DistanceMap distance,
-       const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+       const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices,
+	   int affected_number, class linear_tree *SP_tree)
     {
       typedef typename property_traits<DistanceMap>::value_type D;
       bellman_visitor<> null_vis;
@@ -325,14 +330,15 @@ namespace boost {
                              std::less<D>()),
                 choose_param(get_param(params, graph_visitor),
                              null_vis)
-                , affected_vertices, affected_number);
+                , affected_vertices, affected_number, SP_tree);
     }
 
     template <class EdgeListGraph, class Size, class WeightMap,
               class DistanceMap, class P, class T, class R>
     bool dynamic_bellman_dispatch(EdgeListGraph& g, Size N, 
                           WeightMap weight, DistanceMap distance, 
-                          const bgl_named_params<P, T, R>& params, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+                          const bgl_named_params<P, T, R>& params, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices,
+						  int affected_number, class linear_tree *SP_tree)
     {
       dummy_property_map dummy_pred;
       return 
@@ -342,7 +348,7 @@ namespace boost {
            N, weight,
            choose_param(get_param(params, vertex_predecessor), dummy_pred),
            distance,
-           params, affected_vertices, affected_number);
+           params, affected_vertices, affected_number, SP_tree);
     }
 
   } // namespace detail
@@ -383,34 +389,37 @@ namespace boost {
   template <class EdgeListGraph, class Size, class P, class T, class R>
   bool dynamic_bellman_ford_shortest_paths
     (EdgeListGraph& g, Size N, 
-     const bgl_named_params<P, T, R>& params, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+     const bgl_named_params<P, T, R>& params, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices,
+	 int affected_number, class linear_tree *SP_tree)
   {                                
 
     return detail::dynamic_bellman_dispatch
       (g, N,
        choose_const_pmap(get_param(params, edge_weight), g, edge_weight),
        choose_pmap(get_param(params, vertex_distance), g, vertex_distance),
-       params, affected_vertices, affected_number);
+       params, affected_vertices, affected_number, SP_tree);
   }
 
   template <class EdgeListGraph, class Size>
-  bool dynamic_bellman_ford_shortest_paths(EdgeListGraph& g, Size N, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+  bool dynamic_bellman_ford_shortest_paths(EdgeListGraph& g, Size N, typename graph_traits<EdgeListGraph>::vertex_descriptor *affected_vertices, 
+										   int affected_number, class linear_tree *SP_tree)
   {                                
     bgl_named_params<int,int> params(0);
-    return dynamic_bellman_ford_shortest_paths(g, N, params, affected_vertices, affected_number);
+    return dynamic_bellman_ford_shortest_paths(g, N, params, affected_vertices, affected_number, SP_tree);
   }
 
   template <class VertexAndEdgeListGraph, class P, class T, class R>
   bool dynamic_bellman_ford_shortest_paths
     (VertexAndEdgeListGraph& g, 
-     const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices, int affected_number)
+     const bgl_named_params<P, T, R>& params, typename graph_traits<VertexAndEdgeListGraph>::vertex_descriptor *affected_vertices,
+	 int affected_number, class linear_tree *SP_tree)
   {               
     BOOST_CONCEPT_ASSERT(( VertexListGraphConcept<VertexAndEdgeListGraph> ));
     return detail::dynamic_bellman_dispatch
       (g, num_vertices(g),
        choose_const_pmap(get_param(params, edge_weight), g, edge_weight),
        choose_pmap(get_param(params, vertex_distance), g, vertex_distance),
-       params, affected_vertices, affected_number);
+       params, affected_vertices, affected_number, SP_tree);
   }
 } // namespace boost
 

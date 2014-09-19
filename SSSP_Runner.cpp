@@ -4,6 +4,11 @@
 // Distributed under the Boost Software License, Version 1.0. (See
 // accompanying file LICENSE_1_0.txt or copy at
 // http://www.boost.org/LICENSE_1_0.txt)
+
+
+//g++ -Iboost_1_55_0/ -Lboost_1_55_0/lib SSSP_Runner.cpp
+
+
 //=======================================================================
 #include <boost/config.hpp>
 #include <vector>
@@ -17,20 +22,6 @@
 
 using namespace boost;
 
-struct elem{
-	int node_num;
-	double val;
-	struct elem * next; 
-};
-
-typedef struct elem node;
-
-class linear_tree{
-	public:
-		node *tree_head=NULL;
-		node *node_pointer[100000];
-		double node_val[100000];
-};
 template < typename Graph, typename ParentMap > 
 struct edge_writer
 {
@@ -65,7 +56,7 @@ struct EdgeProperties {
   int weight;
 };
 
-double fill_len(linear_tree *SP_tree, int node_num, std::vector<int> adj[100000])
+double fill_len(class linear_tree *SP_tree, int node_num, std::vector<int> adj[100000])
 {
 	double len=1;
 	for(int i=0;i<adj[node_num].size();i++)
@@ -82,12 +73,14 @@ main()
   class linear_tree SP_tree;
   int adj_mat[101][101]={0};
   int count_wt=0;
-  int N=100;
+  int N=10;
   typedef std::pair < int, int >E;
   typedef adjacency_list < vecS, vecS, bidirectionalS,
     no_property, EdgeProperties> Graph;
   typedef boost::graph_traits<Graph>::edge_descriptor edg_des;
   typedef boost::graph_traits<Graph>::vertex_descriptor vtx_des;
+  typedef boost::graph_traits<Graph>::vertex_iterator vtx_iterator;
+  std::pair<vtx_iterator,vtx_iterator> vtx_list;
   E edge_array[100000];
   #if defined(BOOST_MSVC) && BOOST_MSVC <= 1300
   // VC++ can't handle the iterator constructor
@@ -99,9 +92,17 @@ main()
   std::vector<int> dist_dyn(N, (std::numeric_limits < short >::max)());
   std::vector<std::size_t> parent_dyn(N);
   int weight[100000];
-  int n_edges=200;
-  for(int iter=0;iter<100;iter++)
+  int n_edges=20;
+  vtx_des reverse_vertex_map[10000];
+  for(vtx_list=vertices(g);vtx_list.first!=vtx_list.second;vtx_list.first++)
   {
+  	reverse_vertex_map[*(vtx_list.first)]=*(vtx_list.first);
+  }
+
+  
+  for(int iter=0;iter<50;iter++)
+  {
+  	  std::cout<<"Iteration "<<iter<<std::endl;
 	  int filled_edgs=0;
 	  for (int i=0;i<n_edges;i++){
 		int init=rand()%N,fin=rand()%N;
@@ -119,23 +120,44 @@ main()
 		}
 	  //std::cout<<std::endl;
 
+
 	  std::pair<edg_des,bool> ins_edg;
 	  for (std::size_t j = 0; j < filled_edgs; ++j){
 	    ins_edg=add_edge(edge_array[j].first, edge_array[j].second, g);
 	    }
+	  typedef boost::graph_traits< Graph >::vertex_iterator vtx;
+	  std::pair< vtx, vtx > vtx_itr;
+	  graph_traits < Graph >::edge_iterator ei, ei_end;
+	  vtx_itr=vertices(g);
+	  typedef boost::graph_traits<Graph>::in_edge_iterator in_edg;
+	  std::pair<in_edg,in_edg> e_it;
+	  e_it = in_edges(*vtx_itr.first,g);
+
+	  property_map<Graph, int EdgeProperties::*>::type 
+	    weight_pmap = get(&EdgeProperties::weight, g);
+
+	  int i = 0;
+	  for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei, ++i)
+	    {
+		weight_pmap[*ei] = weight[i];
+		//std::cout<<source(*ei,g)<<"-"<<target(*ei,g)<<": "<<weight[i]<<std::endl;
+	    }
+
+ 
+
 	  n_edges=1;
 	  vtx_des affected_vertices[100000];
 	  int update=0;
 	  vtx_des vt_des_sr=source(ins_edg.first,g);
 	  vtx_des vt_des=target(ins_edg.first,g);
-	  affected_vertices[update++]=vt_des_sr;
-	  affected_vertices[update++]=vt_des;
+	  //affected_vertices[update++]=vt_des_sr;
+	  //affected_vertices[update++]=vt_des;
 	  typedef graph_traits<Graph>::out_edge_iterator out_iter;
 	  typedef std::pair<out_iter,out_iter> out_edg_itr;
 	  typedef property_map<Graph, vertex_index_t>::type tvertex_index_map;
 	  tvertex_index_map indices = get(vertex_index, g);
 	  int vertices_idx[100000]={0};
-	  int int_vertex=indices[vt_des];
+	  int int_vertex=indices[vt_des_sr];
 	  vertices_idx[int_vertex]=1;
 	  int current_vt=1;
 /*	  while(current_vt<=update){
@@ -151,31 +173,55 @@ main()
 		
 	  }*/
 	  //std::cout<<std::endl;
-	  
-	  typedef boost::graph_traits< Graph >::vertex_iterator vtx;
-	  std::pair< vtx, vtx > vtx_itr;
-	  graph_traits < Graph >::edge_iterator ei, ei_end;
-	  vtx_itr=vertices(g);
-	  typedef boost::graph_traits<Graph>::in_edge_iterator in_edg;
-	  std::pair<in_edg,in_edg> e_it;
-	  e_it = in_edges(*vtx_itr.first,g);
 
-	  property_map<Graph, int EdgeProperties::*>::type 
-	    weight_pmap = get(&EdgeProperties::weight, g);
 
-	  int i = 0;
+	  //############## PARALLEL INITIALIZATION HERE ################################################
+	if (iter!=0)
+	{
+		printf("entered\n");
+		std::cout<<vt_des<<","<<vt_des_sr<<std::endl;
+		for (int temp_i=0;temp_i<N;temp_i++)
+		{
+			std::cout<<dist_dyn[temp_i]<<" ";
+		} 
+		std::cout<<std::endl;
+		int delta_wt=dist_dyn[vt_des]-dist_dyn[vt_des_sr]-weight[count_wt-1];
+		std::cout<<"delta wt"<<delta_wt<<std::endl;
+		node *aff_node=SP_tree.node_pointer[vt_des];
+		int curr_node_val=aff_node->val;
+		int start_lim=curr_node_val;
+		int stop_lim=SP_tree.node_val[vt_des];
+		stop_lim+=start_lim;
+		if (delta_wt>0)
+			while(curr_node_val<stop_lim && aff_node!=NULL)
+			{
+				dist_dyn[aff_node->node_num]=dist_dyn[aff_node->node_num]-delta_wt;
+				vtx_des eq_vtx=reverse_vertex_map[aff_node->node_num];
+				for (out_edg_itr out_e=out_edges(eq_vtx,g);out_e.first!=out_e.second;out_e.first++)
+				{
+					node *temp=SP_tree.node_pointer[target(*(out_e.first),g)];
+					if (temp->val<start_lim || temp->val >= stop_lim)
+					{
+						if(dist_dyn[target(*(out_e.first),g)]>dist_dyn[aff_node->node_num]+weight_pmap[*(out_e.first)])
+						{
+							dist_dyn[target(*(out_e.first),g)]=dist_dyn[aff_node->node_num]+weight_pmap[*(out_e.first)];
+							affected_vertices[update++]=target(*(out_e.first),g);
+							std::cout<<target(*(out_e.first),g)<<" Inserted"<<std::endl;
+							parent_dyn[target(*(out_e.first),g)]=source(*(out_e.first),g);
+						}
+					}
+				}
+				aff_node=aff_node->next;
+				curr_node_val=aff_node->val;
 
-	  for (boost::tie(ei, ei_end) = edges(g); ei != ei_end; ++ei, ++i)
-	    {
-		weight_pmap[*ei] = weight[i];
-		//std::cout<<source(*ei,g)<<"-"<<target(*ei,g)<<": "<<weight[i]<<std::endl;
-	    }
-		//std::cout<<std::endl;
+			}
 
-	  
+	}
+
 	  std::vector<int> dist_restart(N, (std::numeric_limits < short >::max)());
 	  std::vector<std::size_t> parent(N);
 	  for (i = 0; i < N; ++i){
+	  	SP_tree.node_pointer[i]=NULL;
 	    parent[i] = i;
 	  }
 	  dist_restart[3] = 0;
@@ -200,10 +246,11 @@ main()
 	     closed_plus<int>(), std::less<int>(), default_bellman_visitor());
 	#else*/
 	  if(iter!=0){
-	  std::cout<<"Exec Dyn"<<std::endl;
+	  std::cout<<"Exec Dyn"<<","<<update<<std::endl;
 	  bool r_dyn = dynamic_bellman_ford_shortest_paths
 	    (g, int (N), weight_map(weight_pmap).distance_map(&dist_dyn[0]).
-	     predecessor_map(&parent_dyn[0]),affected_vertices, update);
+	     predecessor_map(&parent_dyn[0]),affected_vertices, update, &SP_tree);
+	    std::cout<<"Returned from function"<<std::endl;
 	  }
 	  else{
 	  	for(i=0;i<N;i++){
@@ -216,7 +263,7 @@ main()
 			if(it!=3)
 				adj[parent[it]].push_back(it);
 		}
-		// INITIALIZE THE SP_tree
+		// *****************************************INITIALIZE THE SP_tree*******************
 		int curr=0;
 		node *locator=SP_tree.tree_head;
 		std::stack<int> st;
@@ -235,6 +282,7 @@ main()
 				SP_tree.tree_head->node_num=temp;
 				SP_tree.tree_head->val=curr++;
 				SP_tree.tree_head->next=NULL;
+				SP_tree.tree_head->prev=NULL;
 				locator=SP_tree.tree_head;
 			}
 			else
@@ -243,8 +291,12 @@ main()
 				locator->next->node_num=temp;
 				locator->next->val=curr++;
 				locator->next->next=NULL;
+				locator->next->prev=locator;
 				locator=locator->next;
 			}
+			//std::cout<<locator->node_num<<std::endl;
+			SP_tree.node_pointer[locator->node_num]=locator;
+			std::cout<<SP_tree.node_pointer[locator->node_num]->node_num<<" ";
 
 		}
 		locator=SP_tree.tree_head;
@@ -263,11 +315,18 @@ main()
 			}
 			std::cout<<std::endl;
 		}
+		for(int it=0;it<N;it++)
+		{
+			if (SP_tree.node_pointer[it]!=NULL)
+				std::cout<<SP_tree.node_pointer[it]->node_num<<" ";
+		}
+		std::cout<<std::endl;
 
-		//FILL IN THE LENGTH OF CHILD VALUES
+		//************************8FILL IN THE LENGTH OF CHILD VALUES***************************
 		SP_tree.node_val[3]=fill_len( &SP_tree, 3,adj);
 		for(int it=0;it<N;it++)
-				std::cout<<SP_tree.node_val[it]<<" ";
+				if (SP_tree.node_pointer[it]!=NULL)
+					std::cout<<SP_tree.node_pointer[it]->node_num<<" ";
 		std::cout<<std::endl;
 	  }
 	//#endif
