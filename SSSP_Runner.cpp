@@ -99,8 +99,12 @@ main()
   	reverse_vertex_map[*(vtx_list.first)]=*(vtx_list.first);
   }
 
-  
-  for(int iter=0;iter<50;iter++)
+  for (int i = 0; i < N; ++i)
+  {
+	  	SP_tree.node_pointer[i]=NULL;
+  }
+
+  for(int iter=0;iter<30;iter++)
   {
   	  std::cout<<"Iteration "<<iter<<std::endl;
 	  int filled_edgs=0;
@@ -178,23 +182,27 @@ main()
 	  //############## PARALLEL INITIALIZATION HERE ################################################
 	if (iter!=0)
 	{
-		printf("entered\n");
 		std::cout<<vt_des<<","<<vt_des_sr<<std::endl;
-		for (int temp_i=0;temp_i<N;temp_i++)
+/*		for (int temp_i=0;temp_i<N;temp_i++)
 		{
 			std::cout<<dist_dyn[temp_i]<<" ";
 		} 
 		std::cout<<std::endl;
+*/
 		int delta_wt=dist_dyn[vt_des]-dist_dyn[vt_des_sr]-weight[count_wt-1];
-		std::cout<<"delta wt"<<delta_wt<<std::endl;
+//		std::cout<<"delta wt"<<delta_wt<<std::endl;
 		node *aff_node=SP_tree.node_pointer[vt_des];
-		int curr_node_val=aff_node->val;
-		int start_lim=curr_node_val;
-		int stop_lim=SP_tree.node_val[vt_des];
+		//std::cout<<"Accessed"<<std::endl;
+		double curr_node_val=aff_node->val;
+//		std::cout<<"Accessed"<<std::endl;
+		double start_lim=curr_node_val;
+		double stop_lim=SP_tree.node_val[vt_des];
+//		std::cout<<"Accessed 1"<<std::endl;
 		stop_lim+=start_lim;
 		if (delta_wt>0)
 			while(curr_node_val<stop_lim && aff_node!=NULL)
 			{
+				std::cout<<aff_node->node_num<<std::endl;
 				dist_dyn[aff_node->node_num]=dist_dyn[aff_node->node_num]-delta_wt;
 				vtx_des eq_vtx=reverse_vertex_map[aff_node->node_num];
 				for (out_edg_itr out_e=out_edges(eq_vtx,g);out_e.first!=out_e.second;out_e.first++)
@@ -212,8 +220,9 @@ main()
 					}
 				}
 				aff_node=aff_node->next;
-				curr_node_val=aff_node->val;
 
+				if (aff_node!=NULL)
+					curr_node_val=aff_node->val;
 			}
 
 	}
@@ -221,7 +230,6 @@ main()
 	  std::vector<int> dist_restart(N, (std::numeric_limits < short >::max)());
 	  std::vector<std::size_t> parent(N);
 	  for (i = 0; i < N; ++i){
-	  	SP_tree.node_pointer[i]=NULL;
 	    parent[i] = i;
 	  }
 	  dist_restart[3] = 0;
@@ -299,6 +307,18 @@ main()
 			std::cout<<SP_tree.node_pointer[locator->node_num]->node_num<<" ";
 
 		}
+		for (int it=0;it <N;it++)
+		{
+			if (SP_tree.node_pointer[it]==NULL)
+			{
+				SP_tree.node_pointer[it]=new node;
+				SP_tree.node_pointer[it]->node_num=it;
+				SP_tree.node_pointer[it]->val=curr++;
+				SP_tree.node_pointer[it]->next=NULL;
+				SP_tree.node_pointer[it]->prev=NULL;
+				SP_tree.node_val[it]=1;
+			}
+		}
 		locator=SP_tree.tree_head;
 		while(locator!=NULL)
 		{
@@ -324,6 +344,7 @@ main()
 
 		//************************8FILL IN THE LENGTH OF CHILD VALUES***************************
 		SP_tree.node_val[3]=fill_len( &SP_tree, 3,adj);
+		std::cout<<"Printing tree"<<std::endl;
 		for(int it=0;it<N;it++)
 				if (SP_tree.node_pointer[it]!=NULL)
 					std::cout<<SP_tree.node_pointer[it]->node_num<<" ";

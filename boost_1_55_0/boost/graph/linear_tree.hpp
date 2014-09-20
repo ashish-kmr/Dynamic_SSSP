@@ -14,7 +14,7 @@ class linear_tree{
 		double node_val[100000];
 	// CONSTRUCT PUBLIC FUNCTIONS TO MODIFY THE TREE
 	public:
-		void change_parent(node node_num, node *new_parent)
+		void change_parent(int node_num, node *new_parent)
 		{
 			node *temp=node_pointer[node_num];
 			node_val[node_num]=((new_parent->next->val)-(new_parent->val))/2;
