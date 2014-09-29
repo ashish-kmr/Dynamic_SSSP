@@ -9,7 +9,8 @@ typedef struct elem node;
 
 class linear_tree{
 	public:
-		node *tree_head=NULL;
+//		node *tree_head=NULL;
+		node *tree_head;
 		node *node_pointer[100000];
 		double node_val[100000];
 	// CONSTRUCT PUBLIC FUNCTIONS TO MODIFY THE TREE
